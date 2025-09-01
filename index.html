@@ -599,10 +599,6 @@
                     <input type="text" id="address" placeholder="Enter your complete address" required>
                 </div>
                 <div class="form-group">
-                    <label for="aadhar">Aadhar Card Number</label>
-                    <input type="text" id="aadhar" placeholder="Enter your 12-digit Aadhar number" required pattern="[0-9]{12}">
-                </div>
-                <div class="form-group">
                     <label for="phone">Phone Number</label>
                     <input type="text" id="phone" placeholder="Enter your 10-digit phone number" required pattern="[0-9]{10}">
                 </div>
@@ -685,10 +681,6 @@
                     <input type="text" id="editAddress" required>
                 </div>
                 <div class="form-group">
-                    <label for="editAadhar">Aadhar Card Number</label>
-                    <input type="text" id="editAadhar" required pattern="[0-9]{12}">
-                </div>
-                <div class="form-group">
                     <label for="editPhone">Phone Number</label>
                     <input type="text" id="editPhone" required pattern="[0-9]{10}">
                 </div>
@@ -767,7 +759,6 @@
                 // Get form values
                 const name = document.getElementById('name').value;
                 const address = document.getElementById('address').value;
-                const aadhar = document.getElementById('aadhar').value;
                 const phone = document.getElementById('phone').value;
                 const months = document.getElementById('months').value;
                 const amount = document.getElementById('amount').value;
@@ -777,7 +768,6 @@
                 const customer = {
                     name,
                     address,
-                    aadhar,
                     phone,
                     months,
                     amount,
@@ -798,7 +788,6 @@
                 const id = document.getElementById('editId').value;
                 const name = document.getElementById('editName').value;
                 const address = document.getElementById('editAddress').value;
-                const aadhar = document.getElementById('editAadhar').value;
                 const phone = document.getElementById('editPhone').value;
                 const months = document.getElementById('editMonths').value;
                 const amount = document.getElementById('editAmount').value;
@@ -809,7 +798,6 @@
                     id,
                     name,
                     address,
-                    aadhar,
                     phone,
                     months,
                     amount,
@@ -880,10 +868,10 @@
             // Get existing customers from localStorage
             let customers = JSON.parse(localStorage.getItem('jaiShreeShyamCustomers')) || [];
             
-            // Check if customer with same Aadhar already exists
-            const existingIndex = customers.findIndex(c => c.aadhar === customer.aadhar);
+            // Check if customer with same phone already exists
+            const existingIndex = customers.findIndex(c => c.phone === customer.phone);
             if (existingIndex !== -1) {
-                showNotification('Customer with this Aadhar number already exists!', 'error');
+                showNotification('Customer with this phone number already exists!', 'error');
                 return;
             }
             
@@ -1096,136 +1084,177 @@
             displayNotifications();
             updateNotificationCount();
         }
-        
         function markAsPaid(customerId) {
-            if (confirm('Mark this customer as paid?')) {
-                // For demo purposes, we'll update in localStorage
-                // In a real implementation, you would send this to your server
-                
-                let customers = JSON.parse(localStorage.getItem('jaiShreeShyamCustomers')) || [];
-                const index = customers.findIndex(c => c.id === customerId);
-                
-                if (index !== -1) {
-                    // Set next payment date to today + months
-                    const nextPaymentDate = new Date();
-                    nextPaymentDate.setMonth(nextPaymentDate.getMonth() + parseInt(customers[index].months));
-                    
-                    customers[index].payment_date = nextPaymentDate.toISOString().split('T')[0];
-                    customers[index].status = 'paid';
-                    
-                    localStorage.setItem('jaiShreeShyamCustomers', JSON.stringify(customers));
-                    
-                    // Remove any due notifications for this customer
-                    let notifications = JSON.parse(localStorage.getItem('jaiShreeShyamNotifications')) || [];
-                    notifications = notifications.filter(n => !(n.customerId === customerId && n.type === 'payment_due'));
-                    localStorage.setItem('jaiShreeShyamNotifications', JSON.stringify(notifications));
-                    
-                    showNotification('Customer marked as paid!');
-                    loadCustomers(); // Refresh the customer list
-                    displayNotifications(); // Update notifications
-                    updateNotificationCount(); // Update notification count
-                } else {
-                    showNotification('Customer not found!', 'error');
-                }
+    if (confirm('Mark this customer as paid?')) {
+        // Update customer payment date
+        let customers = JSON.parse(localStorage.getItem('jaiShreeShyamCustomers')) || [];
+        const customerIndex = customers.findIndex(c => c.id === customerId);
+        
+        if (customerIndex !== -1) {
+            // Set next payment date to one month from today
+            const today = new Date();
+            const nextPaymentDate = new Date();
+            nextPaymentDate.setMonth(today.getMonth() + parseInt(customers[customerIndex].months));
+            
+            // Format date for storage
+            const yyyy = nextPaymentDate.getFullYear();
+            const mm = String(nextPaymentDate.getMonth() + 1).padStart(2, '0');
+            const dd = String(nextPaymentDate.getDate()).padStart(2, '0');
+            const nextPaymentDateStr = `${yyyy}-${mm}-${dd}`;
+            
+            // Update customer
+            customers[customerIndex].payment_date = nextPaymentDateStr;
+            
+            // Save back to localStorage
+            localStorage.setItem('jaiShreeShyamCustomers', JSON.stringify(customers));
+            
+            // Remove any payment due notifications for this customer
+            let notifications = JSON.parse(localStorage.getItem('jaiShreeShyamNotifications')) || [];
+            notifications = notifications.filter(n => !(n.customerId === customerId && n.type === 'payment_due'));
+            localStorage.setItem('jaiShreeShyamNotifications', JSON.stringify(notifications));
+            
+            showNotification('Customer marked as paid! Next payment date updated.');
+            loadCustomers(); // Refresh the customer list
+            updateDashboard(); // Update dashboard
+            displayNotifications(); // Update notifications
+        }
+    }
+}
+
+function openEditModal(customerId) {
+    // Get customer data
+    const customers = JSON.parse(localStorage.getItem('jaiShreeShyamCustomers')) || [];
+    const customer = customers.find(c => c.id === customerId);
+    
+    if (customer) {
+        // Populate the edit form
+        document.getElementById('editId').value = customer.id;
+        document.getElementById('editName').value = customer.name;
+        document.getElementById('editAddress').value = customer.address;
+        document.getElementById('editPhone').value = customer.phone;
+        document.getElementById('editMonths').value = customer.months;
+        document.getElementById('editAmount').value = customer.amount;
+        document.getElementById('editPaymentDate').value = customer.payment_date;
+        
+        // Show the modal
+        document.getElementById('editModal').style.display = 'flex';
+    }
+}
+
+function updateCustomer(customer) {
+    // Update customer in localStorage
+    let customers = JSON.parse(localStorage.getItem('jaiShreeShyamCustomers')) || [];
+    const index = customers.findIndex(c => c.id === customer.id);
+    
+    if (index !== -1) {
+        // Preserve the original ID and creation date
+        customer.created_at = customers[index].created_at;
+        
+        // Update the customer
+        customers[index] = {...customers[index], ...customer};
+        
+        // Save back to localStorage
+        localStorage.setItem('jaiShreeShyamCustomers', JSON.stringify(customers));
+        
+        showNotification('Customer updated successfully!');
+        document.getElementById('editModal').style.display = 'none';
+        loadCustomers(); // Refresh the customer list
+        updateDashboard(); // Update dashboard
+        checkDuePayments(); // Check for due payments
+    }
+}
+
+function deleteCustomer(customerId) {
+    if (confirm('Are you sure you want to delete this customer?')) {
+        // Remove customer from localStorage
+        let customers = JSON.parse(localStorage.getItem('jaiShreeShyamCustomers')) || [];
+        customers = customers.filter(c => c.id !== customerId);
+        
+        // Remove any notifications for this customer
+        let notifications = JSON.parse(localStorage.getItem('jaiShreeShyamNotifications')) || [];
+        notifications = notifications.filter(n => n.customerId !== customerId);
+        
+        // Save changes
+        localStorage.setItem('jaiShreeShyamCustomers', JSON.stringify(customers));
+        localStorage.setItem('jaiShreeShyamNotifications', JSON.stringify(notifications));
+        
+        showNotification('Customer deleted successfully!');
+        loadCustomers(); // Refresh the customer list
+        updateDashboard(); // Update dashboard
+        displayNotifications(); // Update notifications
+    }
+}
+
+function filterCustomers() {
+    const statusFilter = document.getElementById('statusFilter').value;
+    const searchText = document.getElementById('search').value.toLowerCase();
+    const table = document.getElementById('customerTable').getElementsByTagName('tbody')[0];
+    const rows = table.getElementsByTagName('tr');
+    
+    for (let i = 0; i < rows.length; i++) {
+        let showRow = true;
+        
+        // Apply status filter
+        if (statusFilter !== 'all') {
+            const rowStatus = rows[i].dataset.status;
+            if (statusFilter !== rowStatus) {
+                showRow = false;
             }
         }
         
-        function filterCustomers() {
-            const statusFilter = document.getElementById('statusFilter').value;
-            const searchTerm = document.getElementById('search').value.toLowerCase();
-            const rows = document.getElementById('customerTable').getElementsByTagName('tbody')[0].rows;
+        // Apply search filter
+        if (showRow && searchText) {
+            const customerData = JSON.parse(rows[i].dataset.customer);
+            const nameMatch = customerData.name.toLowerCase().includes(searchText);
+            const phoneMatch = customerData.phone.includes(searchText);
             
-            for (let row of rows) {
-                const customerData = JSON.parse(row.dataset.customer || '{}');
-                const status = row.dataset.status || '';
-                const name = customerData.name ? customerData.name.toLowerCase() : '';
-                const phone = customerData.phone ? customerData.phone.toLowerCase() : '';
-                
-                const statusMatch = statusFilter === 'all' || status === statusFilter;
-                const searchMatch = !searchTerm || name.includes(searchTerm) || phone.includes(searchTerm);
-                
-                row.style.display = statusMatch && searchMatch ? '' : 'none';
+            if (!nameMatch && !phoneMatch) {
+                showRow = false;
             }
         }
         
-        function openEditModal(customerId) {
-            // For demo purposes, we'll get from localStorage
-            // In a real implementation, you would fetch from your server
-            
-            const customers = JSON.parse(localStorage.getItem('jaiShreeShyamCustomers')) || [];
-            const customer = customers.find(c => c.id === customerId);
-            
-            if (customer) {
-                document.getElementById('editId').value = customer.id;
-                document.getElementById('editName').value = customer.name;
-                document.getElementById('editAddress').value = customer.address;
-                document.getElementById('editAadhar').value = customer.aadhar;
-                document.getElementById('editPhone').value = customer.phone;
-                document.getElementById('editMonths').value = customer.months;
-                document.getElementById('editAmount').value = customer.amount;
-                document.getElementById('editPaymentDate').value = customer.payment_date;
-                
-                document.getElementById('editModal').style.display = 'flex';
+        // Show or hide the row
+        rows[i].style.display = showRow ? '' : 'none';
+    }
+}
+
+// Initialize the application
+function initApp() {
+    // Check if we have any data in localStorage, if not, add some sample data
+    if (!localStorage.getItem('jaiShreeShyamCustomers')) {
+        const sampleCustomers = [
+            {
+                id: '1',
+                name: 'Rajesh Kumar',
+                address: '123 Main Street, City',
+                phone: '9876543210',
+                months: '1',
+                amount: '500',
+                payment_date: '2023-12-15',
+                status: 'paid',
+                created_at: new Date().toISOString()
+            },
+            {
+                id: '2',
+                name: 'Suresh Patel',
+                address: '456 Park Road, City',
+                phone: '8765432109',
+                months: '3',
+                amount: '1200',
+                payment_date: '2023-10-05',
+                status: 'due',
+                created_at: new Date().toISOString()
             }
-        }
+        ];
         
-        function updateCustomer(customer) {
-            // For demo purposes, we'll update in localStorage
-            // In a real implementation, you would send this to your server
-            
-            let customers = JSON.parse(localStorage.getItem('jaiShreeShyamCustomers')) || [];
-            const index = customers.findIndex(c => c.id === customer.id);
-            
-            if (index !== -1) {
-                // Check if another customer has the same Aadhar (if Aadhar was changed)
-                if (customers[index].aadhar !== customer.aadhar) {
-                    const existingIndex = customers.findIndex(c => c.aadhar === customer.aadhar && c.id !== customer.id);
-                    if (existingIndex !== -1) {
-                        showNotification('Another customer with this Aadhar number already exists!', 'error');
-                        return;
-                    }
-                }
-                
-                // Preserve created_at date
-                customer.created_at = customers[index].created_at;
-                customers[index] = customer;
-                localStorage.setItem('jaiShreeShyamCustomers', JSON.stringify(customers));
-                
-                showNotification('Customer updated successfully!');
-                document.getElementById('editModal').style.display = 'none';
-                loadCustomers(); // Refresh the customer list
-                checkDuePayments(); // Check for due payments
-            } else {
-                showNotification('Customer not found!', 'error');
-            }
-        }
+        localStorage.setItem('jaiShreeShyamCustomers', JSON.stringify(sampleCustomers));
+    }
+    
+    // Load initial data
+    loadCustomers();
+    checkDuePayments();
+}
+
+// Call initApp when the page loads
+window.onload = initApp;
         
-        function deleteCustomer(customerId) {
-            if (confirm('Are you sure you want to delete this customer?')) {
-                // For demo purposes, we'll delete from localStorage
-                // In a real implementation, you would send a request to your server
-                
-                let customers = JSON.parse(localStorage.getItem('jaiShreeShyamCustomers')) || [];
-                const index = customers.findIndex(c => c.id === customerId);
-                
-                if (index !== -1) {
-                    customers.splice(index, 1);
-                    localStorage.setItem('jaiShreeShyamCustomers', JSON.stringify(customers));
-                    
-                    // Remove any notifications for this customer
-                    let notifications = JSON.parse(localStorage.getItem('jaiShreeShyamNotifications')) || [];
-                    notifications = notifications.filter(n => n.customerId !== customerId);
-                    localStorage.setItem('jaiShreeShyamNotifications', JSON.stringify(notifications));
-                    
-                    showNotification('Customer deleted successfully!');
-                    loadCustomers(); // Refresh the customer list
-                    displayNotifications(); // Update notifications
-                    updateNotificationCount(); // Update notification count
-                } else {
-                    showNotification('Customer not found!', 'error');
-                }
-            }        
-        }
-    </script>
-</body>
-</html>
